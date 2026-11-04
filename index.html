@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Squeek Pulse</title>
+<meta name="description" content="Live dashboard for the Squeekchain stream-game on Sepolia: rounds, work, supply, halving, staking and the latest settlements.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235b7cfa'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2317171b'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#0f0f12;--panel:#17171b;--line:#26262c;--fg:#f2f2f4;--mute:#9a9aa6;--acc:#5b7cfa;--ok:#49d17d;--warn:#f0b64a;--bad:#f06c6c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:20px}
+h1{font-size:28px;margin:0;letter-spacing:.5px}
+h1 span{color:var(--acc)}
+.sub{color:var(--mute)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--mute)}
+.pill.ok{color:var(--ok);border-color:var(--ok)}
+.pill.bad{color:var(--bad);border-color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px}
+section h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mute);margin:0 0 10px}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--mute)}
+.kv dd{margin:0;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+.big{font-size:30px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:8px 0 4px}
+.bar i{display:block;height:100%;background:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{text-align:left;color:var(--mute);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.wrap{overflow-x:auto}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+footer{margin-top:24px;color:var(--mute);font-size:13px}
+#err{display:none;color:var(--bad);margin-top:12px}
+@media(max-width:600px){.big{font-size:24px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Squeek <span>Pulse</span></h1>
+  <span class="sub">live view of the Squeekchain stream-game on Sepolia</span>
+  <span class="pill" id="status">loading…</span>
+  <span class="pill" id="updated"></span>
+</header>
+
+<div class="grid">
+  <section><h2>Round</h2><div class="big" id="round">–</div><dl class="kv">
+    <dt>Stage</dt><dd id="stage">–</dd>
+    <dt>Round length</dt><dd id="roundlen">–</dd>
+    <dt>Settled through</dt><dd id="settled">–</dd>
+    <dt>Indexed block</dt><dd id="indexed">–</dd>
+  </dl></section>
+  <section><h2>Work</h2><div class="big" id="height">–</div><dl class="kv">
+    <dt>Cumulative work</dt><dd id="work">–</dd>
+    <dt>Difficulty (work / 1000 blocks)</dt><dd id="diff">–</dd>
+    <dt>Block progress</dt><dd id="bprog">–</dd>
+    <dt>Blocks per day (avg)</dt><dd id="bpd">–</dd>
+  </dl></section>
+  <section><h2>Supply</h2><div class="big" id="supply">–</div><dl class="kv">
+    <dt>Cap</dt><dd id="cap">–</dd>
+    <dt>Minted of cap</dt><dd id="capPct">–</dd>
+    <dt>Gacha funded</dt><dd id="gacha">–</dd>
+    <dt>Staking funded</dt><dd id="stkfund">–</dd>
+  </dl></section>
+  <section><h2>Emission schedule</h2>
+    <dl class="kv"><dt>Launch bonus window</dt><dd id="bonusTxt">–</dd></dl>
+    <div class="bar"><i id="bonusBar" style="width:0"></i></div>
+    <dl class="kv"><dt>Bonus ends in</dt><dd id="bonusEta">–</dd>
+    <dt>First halving</dt><dd id="halvTxt">–</dd></dl>
+    <div class="bar"><i id="halvBar" style="width:0"></i></div>
+    <dl class="kv"><dt>Halving in</dt><dd id="halvEta">–</dd></dl>
+  </section>
+  <section><h2>Staking</h2><div class="big" id="staked">–</div><dl class="kv">
+    <dt>NFT power</dt><dd id="nftPow">–</dd>
+    <dt>SQK power</dt><dd id="sqkPow">–</dd>
+    <dt>Rewards paid</dt><dd id="paid">–</dd>
+    <dt>Exit fee range</dt><dd id="exit">–</dd>
+  </dl></section>
+  <section><h2>Hamster NFTs</h2><div class="big" id="nftLive">–</div><dl class="kv">
+    <dt>Issued</dt><dd id="nftIssued">–</dd>
+    <dt>Burned (merged)</dt><dd id="nftBurned">–</dd>
+    <dt>Merges</dt><dd id="merges">–</dd>
+    <dt>Max level</dt><dd id="maxLvl">–</dd>
+  </dl></section>
+</div>
+
+<section><h2>Latest core events</h2><div class="wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Block</th><th>Tx</th><th>Details</th></tr></thead><tbody id="events"></tbody></table></div></section>
+
+<section><h2>Contracts (Sepolia)</h2><div class="wrap"><table><tbody id="contracts"></tbody></table></div></section>
+
+<p id="err"></p>
+<footer>Data: <a href="https://api.squeekchain.com/v1/core">api.squeekchain.com/v1/core</a> and <a href="https://api.squeekchain.com/v1/economy/state">/v1/economy/state</a>, refreshed every 30 s. Independent community tool, not affiliated with the Squeekchain team. Source: <a href="https://github.com/blustackk/squeek-pulse">github.com/blustackk/squeek-pulse</a>.</footer>
+</main>
+<script>
+const API='https://api.squeekchain.com/v1';
+const ETH='https://sepolia.etherscan.io';
+const $=id=>document.getElementById(id);
+const n=s=>Number(s);
+const fmt=(x,d=0)=>Number(x).toLocaleString('en-US',{maximumFractionDigits:d});
+const sqk=(base,d=0)=>fmt(Number(BigInt(base)/10n**12n)/1e6,d)+' SQK';
+const dur=sec=>{if(!isFinite(sec)||sec<0)return '–';const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600);return d>0?`${d}d ${h}h`:`${h}h ${Math.floor(sec%3600/60)}m`};
+const ago=ts=>{const s=Math.max(0,Date.now()/1e3-ts);return s<90?`${Math.round(s)}s ago`:s<5400?`${Math.round(s/60)}m ago`:dur(s)+' ago'};
+const short=h=>h.slice(0,6)+'…'+h.slice(-4);
+const link=(path,txt)=>`<a href="${ETH}/${path}" target="_blank" rel="noopener">${txt}</a>`;
+
+function render(core,eco){
+  const c=core.core,cfg=core.configuration;
+  $('status').textContent=core.status+(c.paused?' · paused':'');
+  $('status').className='pill '+(core.status==='available'&&!c.paused?'ok':'bad');
+  $('updated').textContent='updated '+new Date().toLocaleTimeString();
+  $('round').textContent='#'+fmt(eco.lifecycle.currentRound);
+  $('stage').textContent=eco.lifecycle.stage;
+  $('roundlen').textContent=fmt(cfg.roundDuration)+' s';
+  $('settled').textContent='round '+fmt(c.settledThroughRound);
+  $('indexed').textContent=fmt(core.chain.indexedThroughBlock);
+
+  const height=n(c.blockHeight),units=n(cfg.blockUnitsPerBlock);
+  $('height').textContent=fmt(height)+' blocks';
+  $('work').textContent=fmt(c.cumulativeWork);
+  $('diff').textContent=fmt(c.workPerThousandBlocks);
+  $('bprog').textContent=fmt(n(c.blockProgress)/units*100,1)+' %';
+  const elapsed=Date.now()/1e3-n(cfg.genesisTimestamp);
+  const bpd=height/(elapsed/86400);
+  $('bpd').textContent=fmt(bpd,0);
+
+  const s=eco.supply,sch=eco.schedule;
+  $('supply').textContent=sqk(s.liveSupplyBaseUnits);
+  $('cap').textContent=sqk(s.capBaseUnits);
+  $('capPct').textContent=fmt(Number(BigInt(s.totalMintedBaseUnits)*10000n/BigInt(s.capBaseUnits))/100,2)+' %';
+  $('gacha').textContent=sqk(eco.mining.gachaFundedBaseUnits);
+  $('stkfund').textContent=sqk(eco.mining.stakingFundedBaseUnits);
+
+  const closed=n(sch.closedThroughBlock),bonus=n(sch.bonusBlocks),halv=n(sch.halvingBlocks);
+  $('bonusTxt').textContent=`${fmt(Math.min(closed,bonus))} / ${fmt(bonus)} blocks`;
+  $('bonusBar').style.width=Math.min(100,closed/bonus*100)+'%';
+  $('bonusEta').textContent=closed>=bonus?'ended':dur((bonus-closed)/bpd*86400);
+  $('halvTxt').textContent=`${fmt(Math.min(closed,halv))} / ${fmt(halv)} blocks`;
+  $('halvBar').style.width=Math.min(100,closed/halv*100)+'%';
+  $('halvEta').textContent=closed>=halv?'passed':dur((halv-closed)/bpd*86400);
+
+  const st=eco.staking;
+  $('staked').textContent=sqk(st.totalStakedBaseUnits);
+  $('nftPow').textContent=fmt(Number(BigInt(st.totalNftPower)/10n**18n));
+  $('sqkPow').textContent=fmt(Number(BigInt(st.totalSqkPower)/10n**18n));
+  $('paid').textContent=sqk(st.rewards.paidBaseUnits,2);
+  $('exit').textContent=`${st.exitPolicy.minBps/100}–${st.exitPolicy.maxBps/100} % (${st.exitPolicy.windowDays}d window)`;
+
+  const nft=eco.nft;
+  $('nftLive').textContent=fmt(nft.live)+' live';
+  $('nftIssued').textContent=fmt(nft.issued);
+  $('nftBurned').textContent=fmt(nft.burned);
+  $('merges').textContent=nft.mergesOpen?'open':'closed';
+  $('maxLvl').textContent=nft.maximumLevel;
+
+  $('events').innerHTML=core.events.slice(0,15).map(e=>{
+    const args=(e.arguments||[]).filter(a=>!/digest|hash/i.test(a.name)).slice(0,3).map(a=>`${a.name}=${String(a.value).length>14?short(String(a.value)):a.value}`).join(' ');
+    return `<tr><td>${ago(n(e.blockTimestamp))}</td><td>${e.eventName}</td><td>${link('block/'+e.blockNumber,fmt(e.blockNumber))}</td><td>${link('tx/'+e.transactionHash,short(e.transactionHash))}</td><td><code>${args}</code></td></tr>`;
+  }).join('');
+
+  const id=eco.identities;
+  const rows=[['Core',id.core],['SQK token',id.token],['Mining (proxy)',id.mining.proxy],['Staking (proxy)',id.staking.proxy],['Genesis',id.genesis],['Launch',id.launch],['Gacha vault',eco.mining.gachaVault],['Guardian',eco.lifecycle.guardian]];
+  $('contracts').innerHTML=rows.map(([k,v])=>`<tr><td>${k}</td><td>${link('address/'+v,'<code>'+v+'</code>')}</td></tr>`).join('');
+}
+
+async function load(){
+  try{
+    const [core,eco]=await Promise.all([fetch(API+'/core').then(r=>r.json()),fetch(API+'/economy/state').then(r=>r.json())]);
+    render(core,eco);$('err').style.display='none';
+  }catch(e){$('err').textContent='Could not load Squeekchain data: '+e.message;$('err').style.display='block';}
+}
+load();setInterval(load,30000);
+</script>
+</body>
+</html>
