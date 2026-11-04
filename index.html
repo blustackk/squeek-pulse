@@ -5,29 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="squeekchain-project" content="9f0a23a3-c025-4f7a-a02d-ed2a7a36dca3">
 <title>Squeek Pulse</title>
-<meta name="description" content="Live dashboard for the Squeekchain stream-game on Sepolia: rounds, work, supply, halving, staking and the latest settlements.">
+<meta name="description" content="Non-custodial holder tool for Squeekchain on Sepolia: see your Squeeks and SQK stake, plan merges and stakes with the on-chain power formula, and stake, claim, deposit, withdraw or merge from your own wallet.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235b7cfa'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2317171b'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <style>
 :root{--bg:#0f0f12;--panel:#17171b;--line:#26262c;--fg:#f2f2f4;--mute:#9a9aa6;--acc:#5b7cfa;--ok:#49d17d;--warn:#f0b64a;--bad:#f06c6c}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 main{max-width:1100px;margin:0 auto;padding:24px 16px 48px}
-header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:20px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:16px}
 h1{font-size:28px;margin:0;letter-spacing:.5px}
 h1 span{color:var(--acc)}
-.sub{color:var(--mute)}
+.sub{color:var(--mute);flex:1 1 240px}
 .pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--mute)}
 .pill.ok{color:var(--ok);border-color:var(--ok)}
 .pill.bad{color:var(--bad);border-color:var(--bad)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px}
 section h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mute);margin:0 0 10px}
-.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-variant-numeric:tabular-nums;margin:0}
 .kv dt{color:var(--mute)}
 .kv dd{margin:0;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
-.big{font-size:30px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:8px 0 4px}
-.bar i{display:block;height:100%;background:var(--acc)}
+.big{font-size:28px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.strip{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.strip b{color:var(--fg);font-weight:500;font-family:ui-monospace,Menlo,monospace}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+button.quiet{background:transparent;border:1px solid var(--line);color:var(--fg)}
+button:disabled{opacity:.45;cursor:default}
+input[type=number],input[type=text]{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;width:100%}
+label{display:block;color:var(--mute);font-size:13px;margin:8px 0 4px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+.row>*{flex:1 1 140px}
+.row>button{flex:0 0 auto}
 table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 th{text-align:left;color:var(--mute);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line)}
 td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -35,146 +44,268 @@ td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 a{color:var(--acc);text-decoration:none}
 a:hover{text-decoration:underline}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.note{color:var(--mute);font-size:13px;margin:6px 0 0}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+#log{font-family:ui-monospace,Menlo,monospace;font-size:13px;white-space:pre-wrap;color:var(--mute);max-height:160px;overflow:auto;margin:0}
 footer{margin-top:24px;color:var(--mute);font-size:13px}
-#err{display:none;color:var(--bad);margin-top:12px}
-@media(max-width:600px){.big{font-size:24px}}
+@media(max-width:600px){.big{font-size:22px}}
 </style>
 </head>
 <body>
 <main>
 <header>
   <h1>Squeek <span>Pulse</span></h1>
-  <span class="sub">live view of the Squeekchain stream-game on Sepolia</span>
-  <span class="pill" id="status">loading…</span>
-  <span class="pill" id="updated"></span>
+  <span class="sub">your Squeeks, your stake, your power. Non-custodial, Sepolia.</span>
+  <span class="pill" id="net">Sepolia</span>
+  <button id="connect">Connect wallet</button>
 </header>
 
+<section>
+  <h2>Chain pulse</h2>
+  <div class="strip" id="strip">loading…</div>
+</section>
+
 <div class="grid">
-  <section><h2>Round</h2><div class="big" id="round">–</div><dl class="kv">
-    <dt>Stage</dt><dd id="stage">–</dd>
-    <dt>Round length</dt><dd id="roundlen">–</dd>
-    <dt>Settled through</dt><dd id="settled">–</dd>
-    <dt>Indexed block</dt><dd id="indexed">–</dd>
-  </dl></section>
-  <section><h2>Work</h2><div class="big" id="height">–</div><dl class="kv">
-    <dt>Cumulative work</dt><dd id="work">–</dd>
-    <dt>Difficulty (work / 1000 blocks)</dt><dd id="diff">–</dd>
-    <dt>Block progress</dt><dd id="bprog">–</dd>
-    <dt>Blocks per day (avg)</dt><dd id="bpd">–</dd>
-  </dl></section>
-  <section><h2>Supply</h2><div class="big" id="supply">–</div><dl class="kv">
-    <dt>Cap</dt><dd id="cap">–</dd>
-    <dt>Minted of cap</dt><dd id="capPct">–</dd>
-    <dt>Gacha funded</dt><dd id="gacha">–</dd>
-    <dt>Staking funded</dt><dd id="stkfund">–</dd>
-  </dl></section>
-  <section><h2>Emission schedule</h2>
-    <dl class="kv"><dt>Launch bonus window</dt><dd id="bonusTxt">–</dd></dl>
-    <div class="bar"><i id="bonusBar" style="width:0"></i></div>
-    <dl class="kv"><dt>Bonus ends in</dt><dd id="bonusEta">–</dd>
-    <dt>First halving</dt><dd id="halvTxt">–</dd></dl>
-    <div class="bar"><i id="halvBar" style="width:0"></i></div>
-    <dl class="kv"><dt>Halving in</dt><dd id="halvEta">–</dd></dl>
+  <section>
+    <h2>Your position</h2>
+    <div class="big" id="power">–</div>
+    <dl class="kv">
+      <dt>NFT power</dt><dd id="nftPow">–</dd>
+      <dt>SQK power</dt><dd id="sqkPow">–</dd>
+      <dt>Share of network power</dt><dd id="share">–</dd>
+      <dt>Staked SQK</dt><dd id="principal">–</dd>
+      <dt>Fresh (no power yet)</dt><dd id="fresh">–</dd>
+      <dt>Claimable rewards</dt><dd id="claimable">–</dd>
+      <dt>SQK in wallet</dt><dd id="sqkBal">–</dd>
+      <dt>Sepolia ETH</dt><dd id="ethBal">–</dd>
+    </dl>
+    <p class="note" id="posNote">Connect a wallet to read your position.</p>
   </section>
-  <section><h2>Staking</h2><div class="big" id="staked">–</div><dl class="kv">
-    <dt>NFT power</dt><dd id="nftPow">–</dd>
-    <dt>SQK power</dt><dd id="sqkPow">–</dd>
-    <dt>Rewards paid</dt><dd id="paid">–</dd>
-    <dt>Exit fee range</dt><dd id="exit">–</dd>
-  </dl></section>
-  <section><h2>Hamster NFTs</h2><div class="big" id="nftLive">–</div><dl class="kv">
-    <dt>Issued</dt><dd id="nftIssued">–</dd>
-    <dt>Burned (merged)</dt><dd id="nftBurned">–</dd>
-    <dt>Merges</dt><dd id="merges">–</dd>
-    <dt>Max level</dt><dd id="maxLvl">–</dd>
-  </dl></section>
+
+  <section>
+    <h2>Stake &amp; rewards</h2>
+    <label for="stakeAmt">Stake SQK</label>
+    <div class="row"><input id="stakeAmt" type="number" min="0" step="any" placeholder="amount"><button id="stakeBtn" disabled>Approve &amp; stake</button></div>
+    <p class="note" id="stakeNote">New stake is "fresh" until the next power window; power is quoted on-chain below.</p>
+    <div class="row" style="margin-top:10px"><button id="claimBtn" class="quiet" disabled>Claim</button><button id="claimStakeBtn" class="quiet" disabled>Claim &amp; stake</button></div>
+    <label for="unstakeAmt">Unstake SQK</label>
+    <div class="row"><input id="unstakeAmt" type="number" min="0" step="any" placeholder="amount"><button id="quoteBtn" class="quiet" disabled>Quote fee</button><button id="unstakeBtn" disabled>Unstake</button></div>
+    <p class="note" id="unstakeNote">Exit fee depends on recent exits (policy below). The quote is read from the contract before you sign.</p>
+  </section>
+
+  <section>
+    <h2>Power planner</h2>
+    <p class="note">What happens to your power if you add SQK or Squeeks. Quotes use the live staking contract, not a copy of the formula.</p>
+    <label for="planSqk">Extra SQK to stake</label>
+    <input id="planSqk" type="number" min="0" step="any" value="0">
+    <label for="planLvl">Extra Squeeks: level × count</label>
+    <div class="row"><input id="planLvl" type="number" min="1" max="10" value="1"><input id="planCnt" type="number" min="0" value="0"><button id="planBtn" class="quiet">Quote</button></div>
+    <dl class="kv" style="margin-top:10px">
+      <dt>Power now</dt><dd id="planNow">–</dd>
+      <dt>Power after</dt><dd id="planAfter">–</dd>
+      <dt>Share after</dt><dd id="planShare">–</dd>
+      <dt>Same gain via merge?</dt><dd id="planMerge">–</dd>
+    </dl>
+  </section>
 </div>
 
-<section><h2>Latest core events</h2><div class="wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Block</th><th>Tx</th><th>Details</th></tr></thead><tbody id="events"></tbody></table></div></section>
+<section>
+  <h2>Your Squeeks</h2>
+  <p class="note" id="nftNote">Squeeks in your wallet and in the staking vault. Merge two of the same level into one a level higher (+10 % base power per level, with a cooldown).</p>
+  <div class="wrap"><table><thead><tr><th>#</th><th>Where</th><th>Level</th><th>Base power</th><th>Merge</th><th></th></tr></thead><tbody id="nfts"></tbody></table></div>
+  <div class="row" style="margin-top:10px">
+    <input id="idsIn" type="text" placeholder="token ids, comma separated">
+    <button id="depositBtn" class="quiet" disabled>Deposit to vault</button>
+    <button id="withdrawBtn" class="quiet" disabled>Withdraw</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <input id="mergeA" type="number" placeholder="survivor id"><input id="mergeB" type="number" placeholder="donor id (burned)"><button id="mergeBtn" disabled>Merge</button>
+  </div>
+  <p class="note">Deposit needs one-time approval of the vault for your Squeeks. Merges of deposited Squeeks go through the vault; merges in your wallet go through the collection. The donor is burned.</p>
+</section>
 
-<section><h2>Contracts (Sepolia)</h2><div class="wrap"><table><tbody id="contracts"></tbody></table></div></section>
+<section>
+  <h2>Protocol</h2>
+  <div class="grid" style="gap:16px">
+    <dl class="kv" id="proto"></dl>
+    <dl class="kv" id="contracts"></dl>
+  </div>
+</section>
 
-<p id="err"></p>
-<footer>Data: <a href="https://api.squeekchain.com/v1/core">api.squeekchain.com/v1/core</a> and <a href="https://api.squeekchain.com/v1/economy/state">/v1/economy/state</a>, refreshed every 30 s. Independent community tool, not affiliated with the Squeekchain team. Source: <a href="https://github.com/blustackk/squeek-pulse">github.com/blustackk/squeek-pulse</a>.</footer>
+<section><h2>Activity</h2><pre id="log"></pre></section>
+
+<footer>Reads Sepolia directly (public RPC) plus <a href="https://api.squeekchain.com/v1/economy/state">api.squeekchain.com</a> for round state. Every write is a transaction you sign in your own wallet; this page never holds keys. Independent community tool, not affiliated with the Squeekchain team. Source: <a href="https://github.com/blustackk/squeek-pulse">github.com/blustackk/squeek-pulse</a>.</footer>
 </main>
 <script>
+const CHAIN=11155111n, CHAIN_HEX='0xaa36a7';
+const RPC='https://ethereum-sepolia-rpc.publicnode.com';
 const API='https://api.squeekchain.com/v1';
-const ETH='https://sepolia.etherscan.io';
+const ETHERSCAN='https://sepolia.etherscan.io';
+const ADDR={nft:'0xcb98349c134ab983da5bfd80527dfe2552bdb70f',staking:'0x4b67b739dfd832f4eac67a7aa3bc244fb74cea4f',token:'0x5501e1fa81be1c3f49225fa7668da0245d07db60',core:'0x980b4424c007caf7a1f3670b48c8eaef7ebc3d44',mining:'0xcd46990f8349057335289ef282c276204b6cdc62'};
+const DEPLOY_BLOCK=11998937;
+const ABI={
+  token:['function balanceOf(address) view returns (uint256)','function allowance(address,address) view returns (uint256)','function approve(address,uint256) returns (bool)','function totalSupply() view returns (uint256)','function cap() view returns (uint256)'],
+  staking:['function stakeOf(address) view returns (uint256 principal,uint256 freshPrincipal,uint64 freshUntilRound)','function claimable(address) view returns (uint256)','function accountPower(address) view returns (uint256 nftPower,uint256 sqkPower)','function quotePower(uint256 principal,uint256 nftPower) view returns (uint256)','function quoteUnstake(address,uint256) view returns (uint256 fee,uint256 net)','function basePower(address,uint8) view returns (uint64)','function powerParameters() view returns (uint256 sqkPerPower,uint256 referencePower)','function exitPolicy() view returns (tuple(uint16 minBps,uint16 maxBps,uint16 saturationBps,uint8 windowDays,uint128 pressureFloor))','function totalStaked() view returns (uint256)','function depositor(address,uint256) view returns (address)','function stake(uint256)','function claim(address) returns (uint256)','function claimAndStake() returns (uint256)','function unstake(uint256 amount,uint256 maxFee,uint64 deadline) returns (uint256)','function deposit(address,uint256[])','function withdraw(address,uint256[])','function mergeDeposited(address,uint256,uint256)','event Deposited(address indexed account,address indexed collection,uint256 indexed tokenId,uint8 level,uint64 basePower,uint256 power)','event Withdrawn(address indexed account,address indexed collection,uint256 indexed tokenId,uint8 level,uint64 basePower,uint256 power)'],
+  nft:['function balanceOf(address) view returns (uint256)','function ownerOf(uint256) view returns (address)','function level(uint256) view returns (uint8)','function nextMergeHeight(uint256) view returns (uint64)','function mergesOpen() view returns (bool)','function isApprovedForAll(address,address) view returns (bool)','function setApprovalForAll(address,bool)','function merge(uint256 survivor,uint256 donor)','function totalSupply() view returns (uint256)','event Transfer(address indexed from,address indexed to,uint256 indexed tokenId)']
+};
 const $=id=>document.getElementById(id);
-const n=s=>Number(s);
-const fmt=(x,d=0)=>Number(x).toLocaleString('en-US',{maximumFractionDigits:d});
-const sqk=(base,d=0)=>fmt(Number(BigInt(base)/10n**12n)/1e6,d)+' SQK';
-const dur=sec=>{if(!isFinite(sec)||sec<0)return '–';const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600);return d>0?`${d}d ${h}h`:`${h}h ${Math.floor(sec%3600/60)}m`};
-const ago=ts=>{const s=Math.max(0,Date.now()/1e3-ts);return s<90?`${Math.round(s)}s ago`:s<5400?`${Math.round(s/60)}m ago`:dur(s)+' ago'};
-const short=h=>h.slice(0,6)+'…'+h.slice(-4);
-const link=(path,txt)=>`<a href="${ETH}/${path}" target="_blank" rel="noopener">${txt}</a>`;
+const E=ethers;
+const read=new E.JsonRpcProvider(RPC,Number(CHAIN),{staticNetwork:true});
+const R={token:new E.Contract(ADDR.token,ABI.token,read),staking:new E.Contract(ADDR.staking,ABI.staking,read),nft:new E.Contract(ADDR.nft,ABI.nft,read)};
+const fmt=(x,d=2)=>Number(x).toLocaleString('en-US',{maximumFractionDigits:d});
+const sqk=(v,d=2)=>fmt(E.formatEther(v),d)+' SQK';
+const pow=v=>fmt(E.formatEther(v),2);
+const short=a=>a.slice(0,6)+'…'+a.slice(-4);
+const log=(m,cls='')=>{const t=new Date().toLocaleTimeString();$('log').insertAdjacentHTML('afterbegin',`<span class="${cls}">[${t}] ${m}</span>\n`)};
+const link=(p,t)=>`<a href="${ETHERSCAN}/${p}" target="_blank" rel="noopener">${t}</a>`;
 
-function render(core,eco){
-  const c=core.core,cfg=core.configuration;
-  $('status').textContent=core.status+(c.paused?' · paused':'');
-  $('status').className='pill '+(core.status==='available'&&!c.paused?'ok':'bad');
-  $('updated').textContent='updated '+new Date().toLocaleTimeString();
-  $('round').textContent='#'+fmt(eco.lifecycle.currentRound);
-  $('stage').textContent=eco.lifecycle.stage;
-  $('roundlen').textContent=fmt(cfg.roundDuration)+' s';
-  $('settled').textContent='round '+fmt(c.settledThroughRound);
-  $('indexed').textContent=fmt(core.chain.indexedThroughBlock);
+let wallet=null, signer=null, me=null, eco=null, totalPower=0n, myPower={nft:0n,sqk:0n}, myStake=null, myTokens=[];
+const W={};
 
-  const height=n(c.blockHeight),units=n(cfg.blockUnitsPerBlock);
-  $('height').textContent=fmt(height)+' blocks';
-  $('work').textContent=fmt(c.cumulativeWork);
-  $('diff').textContent=fmt(c.workPerThousandBlocks);
-  $('bprog').textContent=fmt(n(c.blockProgress)/units*100,1)+' %';
-  const elapsed=Date.now()/1e3-n(cfg.genesisTimestamp);
-  const bpd=height/(elapsed/86400);
-  $('bpd').textContent=fmt(bpd,0);
-
-  const s=eco.supply,sch=eco.schedule;
-  $('supply').textContent=sqk(s.liveSupplyBaseUnits);
-  $('cap').textContent=sqk(s.capBaseUnits);
-  $('capPct').textContent=fmt(Number(BigInt(s.totalMintedBaseUnits)*10000n/BigInt(s.capBaseUnits))/100,2)+' %';
-  $('gacha').textContent=sqk(eco.mining.gachaFundedBaseUnits);
-  $('stkfund').textContent=sqk(eco.mining.stakingFundedBaseUnits);
-
-  const closed=n(sch.closedThroughBlock),bonus=n(sch.bonusBlocks),halv=n(sch.halvingBlocks);
-  $('bonusTxt').textContent=`${fmt(Math.min(closed,bonus))} / ${fmt(bonus)} blocks`;
-  $('bonusBar').style.width=Math.min(100,closed/bonus*100)+'%';
-  $('bonusEta').textContent=closed>=bonus?'ended':dur((bonus-closed)/bpd*86400);
-  $('halvTxt').textContent=`${fmt(Math.min(closed,halv))} / ${fmt(halv)} blocks`;
-  $('halvBar').style.width=Math.min(100,closed/halv*100)+'%';
-  $('halvEta').textContent=closed>=halv?'passed':dur((halv-closed)/bpd*86400);
-
-  const st=eco.staking;
-  $('staked').textContent=sqk(st.totalStakedBaseUnits);
-  $('nftPow').textContent=fmt(Number(BigInt(st.totalNftPower)/10n**18n));
-  $('sqkPow').textContent=fmt(Number(BigInt(st.totalSqkPower)/10n**18n));
-  $('paid').textContent=sqk(st.rewards.paidBaseUnits,2);
-  $('exit').textContent=`${st.exitPolicy.minBps/100}–${st.exitPolicy.maxBps/100} % (${st.exitPolicy.windowDays}d window)`;
-
-  const nft=eco.nft;
-  $('nftLive').textContent=fmt(nft.live)+' live';
-  $('nftIssued').textContent=fmt(nft.issued);
-  $('nftBurned').textContent=fmt(nft.burned);
-  $('merges').textContent=nft.mergesOpen?'open':'closed';
-  $('maxLvl').textContent=nft.maximumLevel;
-
-  $('events').innerHTML=core.events.slice(0,15).map(e=>{
-    const args=(e.arguments||[]).filter(a=>!/digest|hash/i.test(a.name)).slice(0,3).map(a=>`${a.name}=${String(a.value).length>14?short(String(a.value)):a.value}`).join(' ');
-    return `<tr><td>${ago(n(e.blockTimestamp))}</td><td>${e.eventName}</td><td>${link('block/'+e.blockNumber,fmt(e.blockNumber))}</td><td>${link('tx/'+e.transactionHash,short(e.transactionHash))}</td><td><code>${args}</code></td></tr>`;
-  }).join('');
-
-  const id=eco.identities;
-  const rows=[['Core',id.core],['SQK token',id.token],['Mining (proxy)',id.mining.proxy],['Staking (proxy)',id.staking.proxy],['Genesis',id.genesis],['Launch',id.launch],['Gacha vault',eco.mining.gachaVault],['Guardian',eco.lifecycle.guardian]];
-  $('contracts').innerHTML=rows.map(([k,v])=>`<tr><td>${k}</td><td>${link('address/'+v,'<code>'+v+'</code>')}</td></tr>`).join('');
-}
-
-async function load(){
+async function loadProtocol(){
   try{
-    const [core,eco]=await Promise.all([fetch(API+'/core').then(r=>r.json()),fetch(API+'/economy/state').then(r=>r.json())]);
-    render(core,eco);$('err').style.display='none';
-  }catch(e){$('err').textContent='Could not load Squeekchain data: '+e.message;$('err').style.display='block';}
+    const [e,core,ts,params,policy,mergesOpen]=await Promise.all([fetch(API+'/economy/state').then(r=>r.json()),fetch(API+'/core').then(r=>r.json()),R.staking.totalStaked(),R.staking.powerParameters(),R.staking.exitPolicy(),R.nft.mergesOpen()]);
+    eco=e; totalPower=BigInt(e.staking.totalNftPower)+BigInt(e.staking.totalSqkPower);
+    $('strip').innerHTML=`round <b>#${fmt(e.lifecycle.currentRound,0)}</b> · stage <b>${e.lifecycle.stage}</b> · height <b>${fmt(core.core.blockHeight,0)}</b> · difficulty <b>${fmt(core.core.workPerThousandBlocks,0)}</b> · SQK supply <b>${fmt(E.formatEther(e.supply.liveSupplyBaseUnits),0)}</b> · staked <b>${fmt(E.formatEther(ts),0)}</b> · network power <b>${pow(totalPower)}</b> · Squeeks live <b>${fmt(e.nft.live,0)}</b>`;
+    const bp=e.nft.basePower.map((p,i)=>`L${i+1} ${fmt(p,0)}`).join(', ');
+    $('proto').innerHTML=`<dt>SQK per power unit</dt><dd>${fmt(E.formatEther(params.sqkPerPower),0)}</dd><dt>Reference power</dt><dd>${pow(params.referencePower)}</dd><dt>Exit fee</dt><dd>${Number(policy.minBps)/100}–${Number(policy.maxBps)/100} % (${policy.windowDays}d window)</dd><dt>Merges</dt><dd class="${mergesOpen?'ok':'bad'}">${mergesOpen?'open':'closed'}</dd><dt>Max level</dt><dd>${e.nft.maximumLevel}</dd><dt>Base power by level</dt><dd style="white-space:normal;text-align:left">${bp}</dd><dt>Merge cooldown (blocks, by level)</dt><dd style="white-space:normal;text-align:left">${e.nft.cooldownBlocks.map((c,i)=>`L${i+1} ${fmt(c,0)}`).join(', ')}</dd>`;
+    $('contracts').innerHTML=[['Squeek NFT',ADDR.nft],['Staking vault',ADDR.staking],['SQK token',ADDR.token],['Core',ADDR.core],['Mining',ADDR.mining]].map(([k,v])=>`<dt>${k}</dt><dd>${link('address/'+v,'<code>'+short(v)+'</code>')}</dd>`).join('');
+    if(!me) $('planNow').textContent='0';
+  }catch(err){log('protocol read failed: '+(err.shortMessage||err.message),'bad')}
 }
-load();setInterval(load,30000);
+
+async function connect(){
+  if(!window.ethereum){log('No injected wallet found. Install MetaMask, Rabby or similar.','bad');return}
+  wallet=new E.BrowserProvider(window.ethereum);
+  await wallet.send('eth_requestAccounts',[]);
+  let net=await wallet.getNetwork();
+  if(net.chainId!==CHAIN){
+    try{await wallet.send('wallet_switchEthereumChain',[{chainId:CHAIN_HEX}])}
+    catch(e){log('Switch your wallet to Sepolia (chain 11155111).','bad');$('net').className='pill bad';return}
+    wallet=new E.BrowserProvider(window.ethereum); net=await wallet.getNetwork();
+  }
+  $('net').className='pill ok';
+  signer=await wallet.getSigner(); me=await signer.getAddress();
+  W.token=new E.Contract(ADDR.token,ABI.token,signer); W.staking=new E.Contract(ADDR.staking,ABI.staking,signer); W.nft=new E.Contract(ADDR.nft,ABI.nft,signer);
+  $('connect').textContent=short(me);
+  for(const id of ['stakeBtn','claimBtn','claimStakeBtn','quoteBtn','unstakeBtn','depositBtn','withdrawBtn','mergeBtn']) $(id).disabled=false;
+  log('connected '+me);
+  await refresh();
+}
+
+async function refresh(){
+  if(!me) return;
+  try{
+    const [st,cl,ap,bal,eth]=await Promise.all([R.staking.stakeOf(me),R.staking.claimable(me),R.staking.accountPower(me),R.token.balanceOf(me),read.getBalance(me)]);
+    myStake=st; myPower={nft:ap.nftPower,sqk:ap.sqkPower};
+    const total=ap.nftPower+ap.sqkPower;
+    $('power').textContent=pow(total)+' power';
+    $('nftPow').textContent=pow(ap.nftPower); $('sqkPow').textContent=pow(ap.sqkPower);
+    $('share').textContent=totalPower>0n?fmt(Number(total*1000000n/totalPower)/10000,4)+' %':'–';
+    $('principal').textContent=sqk(st.principal); $('fresh').textContent=st.freshPrincipal>0n?`${sqk(st.freshPrincipal)} until round ${st.freshUntilRound}`:'none';
+    $('claimable').textContent=sqk(cl,4); $('sqkBal').textContent=sqk(bal); $('ethBal').textContent=fmt(E.formatEther(eth),4)+' ETH';
+    $('posNote').textContent='Reads straight from the staking vault and token on Sepolia.';
+    $('planNow').textContent=pow(total);
+    await loadSqueeks();
+  }catch(err){log('refresh failed: '+(err.shortMessage||err.message),'bad')}
+}
+
+async function logsChunked(contract,filter){
+  const latest=await read.getBlockNumber(); const out=[];
+  for(let from=DEPLOY_BLOCK;from<=latest;from+=49000){
+    out.push(...await contract.queryFilter(filter,from,Math.min(from+48999,latest)));
+  }
+  return out;
+}
+
+async function loadSqueeks(){
+  $('nftNote').textContent='Scanning transfers and vault deposits…';
+  try{
+    const [inLogs,depLogs]=await Promise.all([logsChunked(R.nft,R.nft.filters.Transfer(null,me)),logsChunked(R.staking,R.staking.filters.Deposited(me,ADDR.nft))]);
+    const cand=new Set([...inLogs.map(l=>l.args.tokenId),...depLogs.map(l=>l.args.tokenId)].map(String));
+    const height=await read.getBlockNumber();
+    const rows=[];
+    for(const id of cand){
+      let owner; try{owner=await R.nft.ownerOf(id)}catch{continue}
+      let where=null;
+      if(owner.toLowerCase()===me.toLowerCase()) where='wallet';
+      else if(owner.toLowerCase()===ADDR.staking){ const d=await R.staking.depositor(ADDR.nft,id); if(d.toLowerCase()===me.toLowerCase()) where='vault'; }
+      if(!where) continue;
+      const [lvl,nxt]=await Promise.all([R.nft.level(id),R.nft.nextMergeHeight(id)]);
+      rows.push({id,where,lvl:Number(lvl),next:Number(nxt),base:eco?Number(eco.nft.basePower[Number(lvl)-1]):0});
+    }
+    rows.sort((a,b)=>b.lvl-a.lvl||Number(a.id)-Number(b.id));
+    myTokens=rows;
+    $('nfts').innerHTML=rows.length?rows.map(r=>{
+      const ready=r.next<=height; const max=r.lvl>=Number(eco?.nft.maximumLevel??10);
+      const m=max?'max level':ready?'<span class="ok">ready</span>':`<span class="warn">cooldown ${fmt(r.next-height,0)} blocks</span>`;
+      return `<tr><td>${link('nft/'+ADDR.nft+'/'+r.id,'#'+r.id)}</td><td>${r.where}</td><td>L${r.lvl}</td><td>${fmt(r.base,0)}</td><td>${m}</td><td>${r.where==='wallet'?`<button class="quiet" data-dep="${r.id}">deposit</button>`:`<button class="quiet" data-wd="${r.id}">withdraw</button>`}</td></tr>`;
+    }).join(''):'<tr><td colspan="6">No Squeeks found for this wallet.</td></tr>';
+    const pairs={}; rows.forEach(r=>{(pairs[r.where+r.lvl]??=[]).push(r)});
+    const mergeable=Object.values(pairs).filter(p=>p.length>=2&&p.every(x=>x.next<=height)).length;
+    $('nftNote').textContent=`${rows.length} Squeek${rows.length===1?'':'s'} found (${rows.filter(r=>r.where==='vault').length} in vault). ${mergeable?mergeable+' same-level pair'+(mergeable>1?'s':'')+' ready to merge.':'No merge pair ready right now.'}`;
+  }catch(err){$('nftNote').textContent='Could not scan Squeeks: '+(err.shortMessage||err.message)}
+}
+
+async function tx(label,fn){
+  try{
+    log(label+'… confirm in wallet');
+    const t=await fn(); log(label+' sent '+link('tx/'+t.hash,short(t.hash)));
+    const rc=await t.wait(); log(label+(rc.status===1?' confirmed':' FAILED')+' in block '+rc.blockNumber,rc.status===1?'ok':'bad');
+    await refresh();
+  }catch(err){log(label+' failed: '+(err.shortMessage||err.reason||err.message),'bad')}
+}
+const parseIds=s=>s.split(',').map(x=>x.trim()).filter(Boolean).map(x=>BigInt(x));
+
+$('connect').onclick=connect;
+$('stakeBtn').onclick=async()=>{
+  const amt=E.parseEther($('stakeAmt').value||'0'); if(amt<=0n) return log('enter an amount','warn');
+  const allow=await R.token.allowance(me,ADDR.staking);
+  if(allow<amt) await tx('approve SQK',()=>W.token.approve(ADDR.staking,amt));
+  await tx('stake '+sqk(amt),()=>W.staking.stake(amt));
+};
+$('claimBtn').onclick=()=>tx('claim rewards',()=>W.staking.claim(me));
+$('claimStakeBtn').onclick=()=>tx('claim & stake',()=>W.staking.claimAndStake());
+$('quoteBtn').onclick=async()=>{
+  const amt=E.parseEther($('unstakeAmt').value||'0'); if(amt<=0n) return;
+  try{const q=await R.staking.quoteUnstake(me,amt);$('unstakeNote').innerHTML=`Fee now <b>${sqk(q.fee,4)}</b> (${fmt(Number(q.fee*10000n/amt)/100,2)} %), you receive <b>${sqk(q.net,4)}</b>.`}
+  catch(err){$('unstakeNote').textContent='quote failed: '+(err.shortMessage||err.message)}
+};
+$('unstakeBtn').onclick=async()=>{
+  const amt=E.parseEther($('unstakeAmt').value||'0'); if(amt<=0n) return log('enter an amount','warn');
+  const q=await R.staking.quoteUnstake(me,amt); const maxFee=q.fee*105n/100n; const deadline=BigInt(Math.floor(Date.now()/1000)+1800);
+  await tx(`unstake ${sqk(amt)} (max fee ${sqk(maxFee,4)})`,()=>W.staking.unstake(amt,maxFee,deadline));
+};
+async function ensureApproval(){ if(!(await R.nft.isApprovedForAll(me,ADDR.staking))) await tx('approve vault for Squeeks',()=>W.nft.setApprovalForAll(ADDR.staking,true)); }
+$('depositBtn').onclick=async()=>{const ids=parseIds($('idsIn').value); if(!ids.length) return log('enter token ids','warn'); await ensureApproval(); await tx('deposit #'+ids.join(', #'),()=>W.staking.deposit(ADDR.nft,ids))};
+$('withdrawBtn').onclick=async()=>{const ids=parseIds($('idsIn').value); if(!ids.length) return log('enter token ids','warn'); await tx('withdraw #'+ids.join(', #'),()=>W.staking.withdraw(ADDR.nft,ids))};
+$('nfts').onclick=async e=>{const b=e.target.closest('button'); if(!b) return; if(b.dataset.dep){await ensureApproval(); tx('deposit #'+b.dataset.dep,()=>W.staking.deposit(ADDR.nft,[BigInt(b.dataset.dep)]))} else if(b.dataset.wd) tx('withdraw #'+b.dataset.wd,()=>W.staking.withdraw(ADDR.nft,[BigInt(b.dataset.wd)]))};
+$('mergeBtn').onclick=async()=>{
+  const a=$('mergeA').value,b=$('mergeB').value; if(!a||!b||a===b) return log('enter two different token ids','warn');
+  const ta=myTokens.find(t=>t.id===a),tb=myTokens.find(t=>t.id===b);
+  if(!ta||!tb) return log('both Squeeks must be yours (see table)','warn');
+  if(ta.lvl!==tb.lvl) return log(`levels differ (L${ta.lvl} vs L${tb.lvl}); merge needs the same level`,'warn');
+  if(ta.where!==tb.where) return log('both must be in the same place (both wallet or both vault)','warn');
+  if(ta.where==='vault') await tx(`merge #${b} into #${a} (vault)`,()=>W.staking.mergeDeposited(ADDR.nft,BigInt(a),BigInt(b)));
+  else await tx(`merge #${b} into #${a}`,()=>W.nft.merge(BigInt(a),BigInt(b)));
+};
+$('planBtn').onclick=async()=>{
+  try{
+    const extraSqk=E.parseEther($('planSqk').value||'0'); const lvl=Math.min(10,Math.max(1,Number($('planLvl').value||1))); const cnt=Math.max(0,Number($('planCnt').value||0));
+    const base=await R.staking.basePower(ADDR.nft,lvl);
+    const nftAfter=myPower.nft+BigInt(base)*BigInt(cnt)*10n**18n;
+    const principal=(myStake?.principal??0n)+(myStake?.freshPrincipal??0n)+extraSqk;
+    const sqkAfter=principal>0n?await R.staking.quotePower(principal,nftAfter):0n;
+    const now=myPower.nft+myPower.sqk, after=nftAfter+sqkAfter;
+    $('planNow').textContent=pow(now); $('planAfter').textContent=pow(after)+(after>now?` (+${pow(after-now)})`:'');
+    const tp=totalPower-now+after; $('planShare').textContent=tp>0n?fmt(Number(after*1000000n/tp)/10000,4)+' %':'–';
+    const gain=after-now; let msg='–';
+    if(gain>0n&&eco){const bp=eco.nft.basePower.map(Number); const g=Number(E.formatEther(gain)); const hit=bp.findIndex((p,i)=>i>0&&p-bp[i-1]>=g); msg=hit>0?`merging two L${hit} Squeeks gives +${fmt(bp[hit]-bp[hit-1],0)}`:'bigger than any single merge';}
+    $('planMerge').textContent=msg;
+  }catch(err){log('quote failed: '+(err.shortMessage||err.message),'bad')}
+};
+if(window.ethereum){window.ethereum.on?.('accountsChanged',()=>location.reload());window.ethereum.on?.('chainChanged',()=>location.reload())}
+loadProtocol(); setInterval(loadProtocol,60000);
 </script>
 </body>
 </html>
