@@ -210,19 +210,21 @@ async function refresh(){
   }catch(err){log('refresh failed: '+(err.shortMessage||err.message),'bad')}
 }
 
-async function logsChunked(contract,filter){
-  const latest=await read.getBlockNumber(); const out=[];
-  for(let from=DEPLOY_BLOCK;from<=latest;from+=49000){
-    out.push(...await contract.queryFilter(filter,from,Math.min(from+48999,latest)));
-  }
-  return out;
+// Public Sepolia RPCs prune old logs, so candidate token ids come from the Blockscout log index; ownership is then confirmed on-chain.
+const BLOCKSCOUT='https://eth-sepolia.blockscout.com/api';
+const TOPIC={transfer:E.id('Transfer(address,address,uint256)'),deposited:E.id('Deposited(address,address,uint256,uint8,uint64,uint256)')};
+const pad=a=>'0x'+a.slice(2).toLowerCase().padStart(64,'0');
+async function indexedLogs(address,topic0,n,topicN){
+  const q=`${BLOCKSCOUT}?module=logs&action=getLogs&fromBlock=${DEPLOY_BLOCK}&toBlock=latest&address=${address}&topic0=${topic0}&topic${n}=${topicN}&topic0_${n}_opr=and`;
+  const d=await fetch(q).then(r=>r.json());
+  return Array.isArray(d.result)?d.result:[];
 }
 
 async function loadSqueeks(){
   $('nftNote').textContent='Scanning transfers and vault deposits…';
   try{
-    const [inLogs,depLogs]=await Promise.all([logsChunked(R.nft,R.nft.filters.Transfer(null,me)),logsChunked(R.staking,R.staking.filters.Deposited(me,ADDR.nft))]);
-    const cand=new Set([...inLogs.map(l=>l.args.tokenId),...depLogs.map(l=>l.args.tokenId)].map(String));
+    const [inLogs,depLogs]=await Promise.all([indexedLogs(ADDR.nft,TOPIC.transfer,2,pad(me)),indexedLogs(ADDR.staking,TOPIC.deposited,1,pad(me))]);
+    const cand=new Set([...inLogs,...depLogs].map(l=>BigInt(l.topics[3]).toString()));
     const height=await read.getBlockNumber();
     const rows=[];
     for(const id of cand){
