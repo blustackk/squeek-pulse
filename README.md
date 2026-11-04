@@ -22,3 +22,5 @@ python3 -m http.server 8000
 ## Independent community tool
 
 Not affiliated with the Squeekchain team. MIT licensed.
+
+squeekchain-project: 9f0a23a3-c025-4f7a-a02d-ed2a7a36dca3
