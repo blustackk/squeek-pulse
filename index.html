@@ -5,67 +5,174 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="squeekchain-project" content="9f0a23a3-c025-4f7a-a02d-ed2a7a36dca3">
 <title>Squeek Pulse</title>
-<meta name="description" content="Non-custodial holder tool for Squeekchain on Sepolia: see your Squeeks and SQK stake, plan merges and stakes with the on-chain power formula, and stake, claim, deposit, withdraw or merge from your own wallet.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%235b7cfa'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2317171b'/%3E%3C/svg%3E">
+<meta name="description" content="Live companion for Squeekchain: watch Squeektoshi on the wheel in real time, follow rounds, blocks and settlements, and manage your Squeeks and SQK stake non-custodially on Sepolia.">
+<meta property="og:title" content="Squeek Pulse">
+<meta property="og:description" content="Live wheel, rounds and settlements of the hamster-powered chain, plus a non-custodial holder tool for Squeeks and SQK.">
+<meta property="og:url" content="https://squeek.blu-stack.com/">
+<meta name="theme-color" content="#0a0b0e">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23f4b942' stroke-width='3'/%3E%3Cpath d='M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2' stroke='%23f4b942' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23f4b942'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <style>
-:root{--bg:#0f0f12;--panel:#17171b;--line:#26262c;--fg:#f2f2f4;--mute:#9a9aa6;--acc:#5b7cfa;--ok:#49d17d;--warn:#f0b64a;--bad:#f06c6c}
+:root{--bg:#0a0b0e;--panel:#13151b;--panel2:#191c24;--line:#262a35;--fg:#eef0f4;--mute:#8b92a3;--acc:#f4b942;--acc-ink:#1a1304;--ok:#3fd98a;--warn:#f08a4a;--bad:#f06c6c;
+  --display:"Space Grotesk",system-ui,sans-serif;--body:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:14px;--gap:14px}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-main{max-width:1100px;margin:0 auto;padding:24px 16px 48px}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:16px}
-h1{font-size:28px;margin:0;letter-spacing:.5px}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 500px at 15% -10%,rgba(244,185,66,.10),transparent 60%),radial-gradient(700px 400px at 100% 0,rgba(91,124,250,.07),transparent 60%)}
+main{position:relative;max-width:1140px;margin:0 auto;padding:22px 16px 56px}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono);font-size:.93em}
+h1,h2,h3{font-family:var(--display);margin:0}
+h1{font-size:26px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+h1 svg{width:30px;height:30px}
 h1 span{color:var(--acc)}
-.sub{color:var(--mute);flex:1 1 240px}
-.pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--mute)}
-.pill.ok{color:var(--ok);border-color:var(--ok)}
-.pill.bad{color:var(--bad);border-color:var(--bad)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px}
-section h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mute);margin:0 0 10px}
-.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-variant-numeric:tabular-nums;margin:0}
-.kv dt{color:var(--mute)}
-.kv dd{margin:0;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
-.big{font-size:28px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.strip{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
-.strip b{color:var(--fg);font-weight:500;font-family:ui-monospace,Menlo,monospace}
-button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+h2{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;color:var(--mute);margin-bottom:12px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-bottom:18px}
+.tag{color:var(--mute);flex:1 1 220px;font-size:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--mute);background:var(--panel)}
+.pill.ok{color:var(--ok);border-color:rgba(63,217,138,.4)}
+.pill.bad{color:var(--bad);border-color:rgba(240,108,108,.4)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.dot.live{box-shadow:0 0 0 0 currentColor;animation:ping 1.6s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(63,217,138,.6)}100%{box-shadow:0 0 0 9px rgba(63,217,138,0)}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-top:var(--gap)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--gap)}
+.grid>section{margin-top:0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--gap);margin-top:var(--gap)}
+.cols>section{margin-top:0}
+button{background:var(--acc);color:var(--acc-ink);border:0;border-radius:10px;padding:9px 15px;font:inherit;font-weight:500;font-size:14px;cursor:pointer;transition:transform .12s,filter .12s}
+button:hover{filter:brightness(1.06)}
+button:active{transform:translateY(1px)}
 button.quiet{background:transparent;border:1px solid var(--line);color:var(--fg)}
-button:disabled{opacity:.45;cursor:default}
-input[type=number],input[type=text]{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;width:100%}
-label{display:block;color:var(--mute);font-size:13px;margin:8px 0 4px}
+button:disabled{opacity:.4;cursor:default;transform:none;filter:none}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+input[type=number],input[type=text]{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;width:100%}
+label{display:block;color:var(--mute);font-size:13px;margin:10px 0 5px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
 .row>*{flex:1 1 140px}
 .row>button{flex:0 0 auto}
+.kv{display:grid;grid-template-columns:1fr auto;gap:5px 14px;font-variant-numeric:tabular-nums;margin:0}
+.kv dt{color:var(--mute)}
+.kv dd{margin:0;text-align:right;font-family:var(--mono);font-size:14px}
+#proto{grid-template-columns:max-content 1fr}
+.big{font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.note{color:var(--mute);font-size:13px;margin:7px 0 0}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.acc{color:var(--acc)}
 table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
-th{text-align:left;color:var(--mute);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line)}
-td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{text-align:left;color:var(--mute);font-weight:500;padding:7px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 .wrap{overflow-x:auto}
-a{color:var(--acc);text-decoration:none}
-a:hover{text-decoration:underline}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
-.note{color:var(--mute);font-size:13px;margin:6px 0 0}
-.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
-#log{font-family:ui-monospace,Menlo,monospace;font-size:13px;white-space:pre-wrap;color:var(--mute);max-height:160px;overflow:auto;margin:0}
-footer{margin-top:24px;color:var(--mute);font-size:13px}
-@media(max-width:600px){.big{font-size:22px}}
+#log{font-family:var(--mono);font-size:13px;white-space:pre-wrap;color:var(--mute);max-height:160px;overflow:auto;margin:0}
+footer{margin-top:26px;color:var(--mute);font-size:13px;line-height:1.6}
+
+/* live hero */
+.hero{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:22px;align-items:center;background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.wheelbox{display:flex;flex-direction:column;align-items:center;gap:10px}
+.wheel{width:min(100%,240px);aspect-ratio:1;position:relative}
+.wheel svg{width:100%;height:100%;display:block}
+.spokes{transform-origin:50% 50%;animation:spin 2s linear infinite;animation-play-state:paused}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hamster{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:46px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+.state{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:480px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:rgba(10,11,14,.45);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.stat .l{color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+.stat .v{font-family:var(--display);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v small{font-size:13px;color:var(--mute);font-weight:500;margin-left:3px}
+.bar{height:8px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#ffd77a);border-radius:999px;transition:width 1s linear}
+.roundrow{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--mute);margin-top:14px;font-variant-numeric:tabular-nums}
+.roundrow b{color:var(--fg);font-weight:500}
+canvas#spark{width:100%;height:54px;display:block;margin-top:12px;border-radius:8px}
+.strip{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.strip b{color:var(--fg);font-weight:500;font-family:var(--mono)}
+.feed{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.feed li{display:grid;grid-template-columns:62px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;align-items:baseline}
+.feed li:last-child{border-bottom:0}
+.feed time{color:var(--mute);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.feed .ev-measurement{color:var(--acc)}
+.feed .ev-system{color:var(--mute)}
+.records{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.rec .l{color:var(--mute);font-size:12px}
+.rec .v{font-family:var(--display);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.rec .w{color:var(--mute);font-size:12px}
+.skel{color:var(--mute)}
+@media(max-width:720px){.hero{grid-template-columns:1fr}.wheel{width:min(70%,200px)}.big{font-size:24px}}
+@media(prefers-reduced-motion:reduce){.spokes{animation:none!important}.dot.live{animation:none}.bar i{transition:none}}
 </style>
 </head>
 <body>
 <main>
 <header>
-  <h1>Squeek <span>Pulse</span></h1>
-  <span class="sub">your Squeeks, your stake, your power. Non-custodial, Sepolia.</span>
-  <span class="pill" id="net">Sepolia</span>
+  <h1><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#f4b942" stroke-width="3"/><path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2" stroke="#f4b942" stroke-width="2"/><circle cx="16" cy="16" r="3.5" fill="#f4b942"/></svg>Squeek <span>Pulse</span></h1>
+  <span class="tag">Live companion for the hamster-powered chain. Watch the wheel, follow the rounds, run your own stake. Non-custodial, Sepolia.</span>
+  <span class="pill" id="net"><span class="dot"></span>Sepolia</span>
   <button id="connect">Connect wallet</button>
 </header>
+
+<section class="hero" aria-labelledby="liveH">
+  <div class="wheelbox">
+    <div class="wheel" aria-hidden="true">
+      <svg viewBox="0 0 200 200">
+        <defs><radialGradient id="g" cx="50%" cy="50%" r="50%"><stop offset="70%" stop-color="rgba(244,185,66,0)"/><stop offset="100%" stop-color="rgba(244,185,66,.18)"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="96" fill="url(#g)"/>
+        <circle cx="100" cy="100" r="88" fill="none" stroke="#2b2f3a" stroke-width="10"/>
+        <circle cx="100" cy="100" r="88" fill="none" stroke="#f4b942" stroke-width="3" opacity=".9"/>
+        <g class="spokes" id="spokes" stroke="#f4b942" stroke-width="2.5" stroke-linecap="round" opacity=".85">
+          <path d="M100 14v172M14 100h172M39 39l122 122M161 39L39 161M100 14 L100 186" />
+          <path d="M100 100 L100 14M100 100 L183 57M100 100 L183 143M100 100 L100 186M100 100 L17 143M100 100 L17 57" stroke-width="1.5" opacity=".6"/>
+          <circle cx="100" cy="100" r="9" fill="#f4b942" stroke="none"/>
+        </g>
+      </svg>
+      <div class="hamster" id="hamster">🐹</div>
+    </div>
+    <div class="state" id="state"><span class="skel">connecting…</span></div>
+    <div class="note" id="stateNote" aria-live="polite">Squeektoshi's wheel, measured by a signed hardware counter.</div>
+  </div>
+  <div>
+    <h2 id="liveH">Squeektoshi live</h2>
+    <div class="stats">
+      <div class="stat"><div class="l">Wheel</div><div class="v" id="rpm">–<small>rpm</small></div></div>
+      <div class="stat"><div class="l">Speed</div><div class="v" id="speed">–<small>m/s</small></div></div>
+      <div class="stat"><div class="l">Distance, this run</div><div class="v" id="dist">–<small>km</small></div></div>
+      <div class="stat"><div class="l">Work this round</div><div class="v" id="openWork">–<small>units</small></div></div>
+      <div class="stat"><div class="l">Blocks settled</div><div class="v" id="blocks">–</div></div>
+      <div class="stat"><div class="l">Blocks projected</div><div class="v" id="blocksProj">–</div></div>
+    </div>
+    <div class="roundrow"><span>round <b id="roundNo">–</b></span><span>next round in <b id="roundLeft">–</b></span><span>last settlement <b id="lastSettle">–</b></span></div>
+    <div class="bar" role="progressbar" aria-label="round progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="roundBar"><i></i></div>
+    <canvas id="spark" aria-label="wheel rpm, last five minutes"></canvas>
+  </div>
+</section>
 
 <section>
   <h2>Chain pulse</h2>
   <div class="strip" id="strip">loading…</div>
 </section>
 
-<div class="grid">
+<div class="cols">
+  <section>
+    <h2>Last 24 hours</h2>
+    <dl class="kv" id="day"><dt class="skel">loading…</dt><dd></dd></dl>
+  </section>
+  <section>
+    <h2>Records (7 days)</h2>
+    <div class="records" id="records"><span class="skel">loading…</span></div>
+  </section>
+</div>
+
+<section>
+  <h2>Activity on chain</h2>
+  <ul class="feed" id="feed"><li><time>…</time><span class="skel">loading events…</span></li></ul>
+</section>
+
+<div class="cols">
   <section>
     <h2>Your position</h2>
     <div class="big" id="power">–</div>
@@ -86,7 +193,7 @@ footer{margin-top:24px;color:var(--mute);font-size:13px}
     <h2>Stake &amp; rewards</h2>
     <label for="stakeAmt">Stake SQK</label>
     <div class="row"><input id="stakeAmt" type="number" min="0" step="any" placeholder="amount"><button id="stakeBtn" disabled>Approve &amp; stake</button></div>
-    <p class="note" id="stakeNote">New stake is "fresh" until the next power window; power is quoted on-chain below.</p>
+    <p class="note" id="stakeNote">New stake is "fresh" until the next power window; power is quoted on-chain in the planner.</p>
     <div class="row" style="margin-top:10px"><button id="claimBtn" class="quiet" disabled>Claim</button><button id="claimStakeBtn" class="quiet" disabled>Claim &amp; stake</button></div>
     <label for="unstakeAmt">Unstake SQK</label>
     <div class="row"><input id="unstakeAmt" type="number" min="0" step="any" placeholder="amount"><button id="quoteBtn" class="quiet" disabled>Quote fee</button><button id="unstakeBtn" disabled>Unstake</button></div>
@@ -95,11 +202,11 @@ footer{margin-top:24px;color:var(--mute);font-size:13px}
 
   <section>
     <h2>Power planner</h2>
-    <p class="note">What happens to your power if you add SQK or Squeeks. Quotes use the live staking contract, not a copy of the formula.</p>
+    <p class="note" style="margin:0 0 4px">What happens to your power if you add SQK or Squeeks. Quotes use the live staking contract, not a copy of the formula.</p>
     <label for="planSqk">Extra SQK to stake</label>
     <input id="planSqk" type="number" min="0" step="any" value="0">
     <label for="planLvl">Extra Squeeks: level × count</label>
-    <div class="row"><input id="planLvl" type="number" min="1" max="10" value="1"><input id="planCnt" type="number" min="0" value="0"><button id="planBtn" class="quiet">Quote</button></div>
+    <div class="row"><input id="planLvl" type="number" min="1" max="10" value="1" aria-label="level"><input id="planCnt" type="number" min="0" value="0" aria-label="count"><button id="planBtn" class="quiet">Quote</button></div>
     <dl class="kv" style="margin-top:10px">
       <dt>Power now</dt><dd id="planNow">–</dd>
       <dt>Power after</dt><dd id="planAfter">–</dd>
@@ -111,69 +218,185 @@ footer{margin-top:24px;color:var(--mute);font-size:13px}
 
 <section>
   <h2>Your Squeeks</h2>
-  <p class="note" id="nftNote">Squeeks in your wallet and in the staking vault. Merge two of the same level into one a level higher (+10 % base power per level, with a cooldown).</p>
-  <div class="wrap"><table><thead><tr><th>#</th><th>Where</th><th>Level</th><th>Base power</th><th>Merge</th><th></th></tr></thead><tbody id="nfts"></tbody></table></div>
+  <p class="note" id="nftNote" style="margin:0 0 10px">Squeeks in your wallet and in the staking vault. Merge two of the same level into one a level higher (+10 % base power per level, with a cooldown).</p>
+  <div class="wrap"><table><thead><tr><th>#</th><th>Where</th><th>Level</th><th>Base power</th><th>Merge</th><th></th></tr></thead><tbody id="nfts"><tr><td colspan="6" class="skel">Connect a wallet to list your Squeeks.</td></tr></tbody></table></div>
   <div class="row" style="margin-top:10px">
-    <input id="idsIn" type="text" placeholder="token ids, comma separated">
+    <input id="idsIn" type="text" placeholder="token ids, comma separated" aria-label="token ids">
     <button id="depositBtn" class="quiet" disabled>Deposit to vault</button>
     <button id="withdrawBtn" class="quiet" disabled>Withdraw</button>
   </div>
   <div class="row" style="margin-top:10px">
-    <input id="mergeA" type="number" placeholder="survivor id"><input id="mergeB" type="number" placeholder="donor id (burned)"><button id="mergeBtn" disabled>Merge</button>
+    <input id="mergeA" type="number" placeholder="survivor id" aria-label="survivor id"><input id="mergeB" type="number" placeholder="donor id (burned)" aria-label="donor id"><button id="mergeBtn" disabled>Merge</button>
   </div>
   <p class="note">Deposit needs one-time approval of the vault for your Squeeks. Merges of deposited Squeeks go through the vault; merges in your wallet go through the collection. The donor is burned.</p>
 </section>
 
 <section>
-  <h2>Protocol</h2>
-  <div class="grid" style="gap:16px">
+  <h2>Protocol <span id="release" class="mono" style="text-transform:none;letter-spacing:0"></span></h2>
+  <div class="grid">
     <dl class="kv" id="proto"></dl>
     <dl class="kv" id="contracts"></dl>
   </div>
 </section>
 
-<section><h2>Activity</h2><pre id="log"></pre></section>
+<section><h2>Your transactions</h2><pre id="log">nothing yet</pre></section>
 
-<footer>Reads Sepolia directly (public RPC) plus <a href="https://api.squeekchain.com/v1/economy/state">api.squeekchain.com</a> for round state. Every write is a transaction you sign in your own wallet; this page never holds keys. Independent community tool, not affiliated with the Squeekchain team. Source: <a href="https://github.com/blustackk/squeek-pulse">github.com/blustackk/squeek-pulse</a>.</footer>
+<footer>Live data from <a href="https://api.squeekchain.com/v1/status" rel="noopener">api.squeekchain.com</a> (hardware wheel counter, settlements, events). Holder data is read straight from the Squeekchain contracts on Sepolia through a public RPC; contract addresses follow the current release published by the API. Every write is a transaction you sign in your own wallet; this page never holds keys. Independent community tool, not affiliated with the Squeekchain team. Source: <a href="https://github.com/blustackk/squeek-pulse" rel="noopener">github.com/blustackk/squeek-pulse</a>.</footer>
 </main>
 <script>
 const CHAIN=11155111n, CHAIN_HEX='0xaa36a7';
 const RPC='https://ethereum-sepolia-rpc.publicnode.com';
 const API='https://api.squeekchain.com/v1';
 const ETHERSCAN='https://sepolia.etherscan.io';
-const ADDR={nft:'0xcb98349c134ab983da5bfd80527dfe2552bdb70f',staking:'0x4b67b739dfd832f4eac67a7aa3bc244fb74cea4f',token:'0x5501e1fa81be1c3f49225fa7668da0245d07db60',core:'0x980b4424c007caf7a1f3670b48c8eaef7ebc3d44',mining:'0xcd46990f8349057335289ef282c276204b6cdc62'};
-const DEPLOY_BLOCK=11998937;
+const BLOCKSCOUT='https://eth-sepolia.blockscout.com/api';
+// Fallback = release core-sepolia-20261103; the live values come from /economy/state so the page follows redeployments.
+let ADDR={nft:'0xc4c7982657f00509548f3a3a41db7fa439a6856b',staking:'0x50fd1780526c3186a0c037c7622203bc4fb611ca',token:'0xd78a3956cf63164d1fa1c622ad3c66623162fa1e',core:'0xfd6c166d4b8e2962e65746a13e5a0797cd4de0c4',mining:'0x2dccb11fcc2defdd188555e45acb52231e82e218'};
+let DEPLOY_BLOCK=12057556, RELEASE='';
 const ABI={
-  token:['function balanceOf(address) view returns (uint256)','function allowance(address,address) view returns (uint256)','function approve(address,uint256) returns (bool)','function totalSupply() view returns (uint256)','function cap() view returns (uint256)'],
-  staking:['function stakeOf(address) view returns (uint256 principal,uint256 freshPrincipal,uint64 freshUntilRound)','function claimable(address) view returns (uint256)','function accountPower(address) view returns (uint256 nftPower,uint256 sqkPower)','function quotePower(uint256 principal,uint256 nftPower) view returns (uint256)','function quoteUnstake(address,uint256) view returns (uint256 fee,uint256 net)','function basePower(address,uint8) view returns (uint64)','function powerParameters() view returns (uint256 sqkPerPower,uint256 referencePower)','function exitPolicy() view returns (tuple(uint16 minBps,uint16 maxBps,uint16 saturationBps,uint8 windowDays,uint128 pressureFloor))','function totalStaked() view returns (uint256)','function depositor(address,uint256) view returns (address)','function stake(uint256)','function claim(address) returns (uint256)','function claimAndStake() returns (uint256)','function unstake(uint256 amount,uint256 maxFee,uint64 deadline) returns (uint256)','function deposit(address,uint256[])','function withdraw(address,uint256[])','function mergeDeposited(address,uint256,uint256)','event Deposited(address indexed account,address indexed collection,uint256 indexed tokenId,uint8 level,uint64 basePower,uint256 power)','event Withdrawn(address indexed account,address indexed collection,uint256 indexed tokenId,uint8 level,uint64 basePower,uint256 power)'],
-  nft:['function balanceOf(address) view returns (uint256)','function ownerOf(uint256) view returns (address)','function level(uint256) view returns (uint8)','function nextMergeHeight(uint256) view returns (uint64)','function mergesOpen() view returns (bool)','function isApprovedForAll(address,address) view returns (bool)','function setApprovalForAll(address,bool)','function merge(uint256 survivor,uint256 donor)','function totalSupply() view returns (uint256)','event Transfer(address indexed from,address indexed to,uint256 indexed tokenId)']
+  token:['function balanceOf(address) view returns (uint256)','function allowance(address,address) view returns (uint256)','function approve(address,uint256) returns (bool)'],
+  staking:['function stakeOf(address) view returns (uint256 principal,uint256 freshPrincipal,uint64 freshUntilRound)','function claimable(address) view returns (uint256)','function accountPower(address) view returns (uint256 nftPower,uint256 sqkPower)','function quotePower(uint256 principal,uint256 nftPower) view returns (uint256)','function quoteUnstake(address,uint256) view returns (uint256 fee,uint256 net)','function basePower(address,uint8) view returns (uint64)','function powerParameters() view returns (uint256 sqkPerPower,uint256 referencePower)','function exitPolicy() view returns (tuple(uint16 minBps,uint16 maxBps,uint16 saturationBps,uint8 windowDays,uint128 pressureFloor))','function totalStaked() view returns (uint256)','function depositor(address,uint256) view returns (address)','function stake(uint256)','function claim(address) returns (uint256)','function claimAndStake() returns (uint256)','function unstake(uint256 amount,uint256 maxFee,uint64 deadline) returns (uint256)','function deposit(address,uint256[])','function withdraw(address,uint256[])','function mergeDeposited(address,uint256,uint256)'],
+  nft:['function ownerOf(uint256) view returns (address)','function level(uint256) view returns (uint8)','function nextMergeHeight(uint256) view returns (uint64)','function mergesOpen() view returns (bool)','function isApprovedForAll(address,address) view returns (bool)','function setApprovalForAll(address,bool)','function merge(uint256 survivor,uint256 donor)']
 };
 const $=id=>document.getElementById(id);
 const E=ethers;
 const read=new E.JsonRpcProvider(RPC,Number(CHAIN),{staticNetwork:true});
-const R={token:new E.Contract(ADDR.token,ABI.token,read),staking:new E.Contract(ADDR.staking,ABI.staking,read),nft:new E.Contract(ADDR.nft,ABI.nft,read)};
+let R={};
+const bind=()=>{R={token:new E.Contract(ADDR.token,ABI.token,read),staking:new E.Contract(ADDR.staking,ABI.staking,read),nft:new E.Contract(ADDR.nft,ABI.nft,read)}};
+bind();
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=(x,d=2)=>Number(x).toLocaleString('en-US',{maximumFractionDigits:d});
 const sqk=(v,d=2)=>fmt(E.formatEther(v),d)+' SQK';
 const pow=v=>fmt(E.formatEther(v),2);
+const isAddr=a=>/^0x[0-9a-fA-F]{40}$/.test(a||'');
 const short=a=>a.slice(0,6)+'…'+a.slice(-4);
-const log=(m,cls='')=>{const t=new Date().toLocaleTimeString();$('log').insertAdjacentHTML('afterbegin',`<span class="${cls}">[${t}] ${m}</span>\n`)};
+const ago=t=>{const s=Math.max(0,(Date.now()-new Date(t))/1000);return s<60?`${Math.floor(s)}s ago`:s<3600?`${Math.floor(s/60)}m ago`:s<86400?`${Math.floor(s/3600)}h ago`:`${Math.floor(s/86400)}d ago`};
+const mmss=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+const log=(m,cls='')=>{if($('log').textContent==='nothing yet')$('log').textContent='';const t=new Date().toLocaleTimeString();$('log').insertAdjacentHTML('afterbegin',`<span class="${cls}">[${t}] ${m}</span>\n`)};
 const link=(p,t)=>`<a href="${ETHERSCAN}/${p}" target="_blank" rel="noopener">${t}</a>`;
+const who=a=>isAddr(a)?link('address/'+a,'<code>'+short(a)+'</code>'):'someone';
+const getJ=(p,ms=15000)=>fetch(API+p,{signal:AbortSignal.timeout(ms)}).then(r=>{if(!r.ok)throw new Error('API '+r.status);return r.json()});
 
 let wallet=null, signer=null, me=null, eco=null, totalPower=0n, myPower={nft:0n,sqk:0n}, myStake=null, myTokens=[];
+let roundCfg=null; // {genesis, duration}
 const W={};
 
-async function loadProtocol(){
+// ---------- live wheel ----------
+const spark=[]; const SPARK_MAX=60; // 5 min at 5 s
+function drawSpark(){
+  const c=$('spark'); const dpr=window.devicePixelRatio||1; const w=c.clientWidth,h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,w,h);
+  g.fillStyle='rgba(10,11,14,.45)'; g.fillRect(0,0,w,h);
+  if(spark.length<2) return;
+  const max=Math.max(5,...spark.map(p=>p.rpm)); const x=i=>i/(SPARK_MAX-1)*(w-4)+2, y=v=>h-4-(v/max)*(h-10);
+  g.beginPath(); spark.forEach((p,i)=>{i?g.lineTo(x(i),y(p.rpm)):g.moveTo(x(i),y(p.rpm))});
+  g.strokeStyle='#f4b942'; g.lineWidth=1.8; g.lineJoin='round'; g.stroke();
+  g.lineTo(x(spark.length-1),h); g.lineTo(x(0),h); g.closePath(); g.fillStyle='rgba(244,185,66,.14)'; g.fill();
+  g.fillStyle='#8b92a3'; g.font='11px Inter,system-ui'; g.fillText(`${fmt(max,0)} rpm`,6,12);
+}
+let lastSettleAt=null;
+async function liveTick(){
   try{
-    const [e,core,ts,params,policy,mergesOpen]=await Promise.all([fetch(API+'/economy/state').then(r=>r.json()),fetch(API+'/core').then(r=>r.json()),R.staking.totalStaked(),R.staking.powerParameters(),R.staking.exitPolicy(),R.nft.mergesOpen()]);
-    eco=e; totalPower=BigInt(e.staking.totalNftPower)+BigInt(e.staking.totalSqkPower);
-    $('strip').innerHTML=`round <b>#${fmt(e.lifecycle.currentRound,0)}</b> · stage <b>${e.lifecycle.stage}</b> · height <b>${fmt(core.core.blockHeight,0)}</b> · difficulty <b>${fmt(core.core.workPerThousandBlocks,0)}</b> · SQK supply <b>${fmt(E.formatEther(e.supply.liveSupplyBaseUnits),0)}</b> · staked <b>${fmt(E.formatEther(ts),0)}</b> · network power <b>${pow(totalPower)}</b> · Squeeks live <b>${fmt(e.nft.live,0)}</b>`;
-    const bp=e.nft.basePower.map((p,i)=>`L${i+1} ${fmt(p,0)}`).join(', ');
-    $('proto').innerHTML=`<dt>SQK per power unit</dt><dd>${fmt(E.formatEther(params.sqkPerPower),0)}</dd><dt>Reference power</dt><dd>${pow(params.referencePower)}</dd><dt>Exit fee</dt><dd>${Number(policy.minBps)/100}–${Number(policy.maxBps)/100} % (${policy.windowDays}d window)</dd><dt>Merges</dt><dd class="${mergesOpen?'ok':'bad'}">${mergesOpen?'open':'closed'}</dd><dt>Max level</dt><dd>${e.nft.maximumLevel}</dd><dt>Base power by level</dt><dd style="white-space:normal;text-align:left">${bp}</dd><dt>Merge cooldown (blocks, by level)</dt><dd style="white-space:normal;text-align:left">${e.nft.cooldownBlocks.map((c,i)=>`L${i+1} ${fmt(c,0)}`).join(', ')}</dd>`;
-    $('contracts').innerHTML=[['Squeek NFT',ADDR.nft],['Staking vault',ADDR.staking],['SQK token',ADDR.token],['Core',ADDR.core],['Mining',ADDR.mining]].map(([k,v])=>`<dt>${k}</dt><dd>${link('address/'+v,'<code>'+short(v)+'</code>')}</dd>`).join('');
-    if(!me) $('planNow').textContent='0';
-  }catch(err){log('protocol read failed: '+(err.shortMessage||err.message),'bad')}
+    const s=await getJ('/status',8000); const m=s.measurement, b=s.builder;
+    const rpm=Number(m.rpmMilli)/1000, mps=Number(m.speedMmPerSecond)/1000, stale=m.freshness!=='online';
+    const active=rpm>0.5&&!stale&&m.coreStatus!=='COUNTER_FAULT';
+    $('rpm').innerHTML=`${fmt(rpm,1)}<small>rpm</small>`; $('speed').innerHTML=`${fmt(mps,2)}<small>m/s</small>`;
+    $('dist').innerHTML=`${fmt(Number(m.distanceMm)/1e6,2)}<small>km</small>`;
+    $('openWork').innerHTML=`${fmt(b.queued?.openRoundWorkUnits??0,0)}<small>units</small>`;
+    $('blocks').textContent=fmt(b.anchor.blockHeight,0); $('blocksProj').textContent=fmt(b.projected?.blockHeight??b.anchor.blockHeight,0);
+    lastSettleAt=b.anchor.confirmedAt; $('lastSettle').innerHTML=link('tx/'+b.anchor.transactionHash,ago(b.anchor.confirmedAt));
+    const sp=$('spokes'); sp.style.animationDuration=`${Math.max(0.25,60/Math.max(rpm,0.1))}s`; sp.style.animationPlayState=active?'running':'paused';
+    $('hamster').textContent=active?'🐹':'💤';
+    const st=$('state');
+    if(stale){st.innerHTML='<span class="bad">offline</span>';$('stateNote').textContent=`Counter stale since ${ago(m.observedAt)}.`}
+    else if(m.coreStatus==='COUNTER_FAULT'){st.innerHTML='<span class="bad">counter fault</span>';$('stateNote').textContent='The wheel counter reported a fault.'}
+    else if(active){st.innerHTML='<span class="ok">running</span>';$('stateNote').textContent=`Squeektoshi is on the wheel. Hardware-measured ${ago(m.observedAt)}.`}
+    else{st.innerHTML='<span class="acc">resting</span>';$('stateNote').textContent=`Wheel idle. Hardware-measured ${ago(m.observedAt)}.`}
+    $('net').className='pill '+(stale?'bad':'ok'); $('net').querySelector('.dot').className='dot'+(active?' live':'');
+    spark.push({t:Date.now(),rpm}); if(spark.length>SPARK_MAX) spark.shift(); drawSpark();
+  }catch(err){$('state').innerHTML='<span class="bad">no signal</span>';$('stateNote').textContent='Could not reach the Squeekchain API: '+esc(err.message)}
+}
+function roundTick(){
+  if(!roundCfg) return;
+  const now=Date.now()/1000, el=now-roundCfg.genesis; if(el<0) return;
+  const idx=Math.floor(el/roundCfg.duration), into=el-idx*roundCfg.duration, pct=into/roundCfg.duration*100;
+  $('roundNo').textContent='#'+fmt(idx+1,0); $('roundLeft').textContent=mmss(roundCfg.duration-into);
+  $('roundBar').querySelector('i').style.width=pct.toFixed(1)+'%'; $('roundBar').setAttribute('aria-valuenow',pct.toFixed(0));
+  if(lastSettleAt) $('lastSettle').firstChild.textContent=ago(lastSettleAt);
 }
 
+// ---------- settlements, records, feed ----------
+async function loadDay(){
+  try{
+    const d=await getJ('/settlements?range=24h'); const s=d.summary; const last=(d.recentSettlements||[]).find(x=>x.sqkMintedBaseUnits);
+    $('day').innerHTML=`<dt>Settlements</dt><dd>${fmt(s.settlementCount,0)}</dd><dt>Active rounds</dt><dd>${fmt(s.activeRoundCount,0)}</dd><dt>Work added</dt><dd>${fmt(s.workAdded,0)} units</dd><dt>Blocks completed</dt><dd>${fmt(s.completedBlockCount,0)}</dd>`+(last?`<dt>Last SQK mint</dt><dd>${sqk(last.sqkMintedBaseUnits,0)} ${link('tx/'+last.transactionHash,'↗')}</dd>`:'');
+  }catch(err){$('day').innerHTML=`<dt class="bad">unavailable</dt><dd>${esc(err.message)}</dd>`}
+}
+async function loadRecords(){
+  try{
+    const d=await getJ('/measurement/stats?range=7d'); const r=d.records, l=d.lifetime, rd=d.rounds;
+    const rec=(label,val,when)=>`<div class="rec"><div class="l">${label}</div><div class="v">${val}</div><div class="w">${when||''}</div></div>`;
+    $('records').innerHTML=[
+      rec('Peak speed',fmt(Number(r.peakObservedSpeedMmPerSecond?.value||0)/1000,2)+' m/s',ago(r.peakObservedSpeedMmPerSecond?.occurredAt)),
+      rec('Peak wheel',fmt(Number(r.peakObservedRpmMilli?.value||0)/1000,0)+' rpm',ago(r.peakObservedRpmMilli?.occurredAt)),
+      rec('Best half hour',fmt(r.mostWorkHalfHour?.value||0,0)+' work',ago(r.mostWorkHalfHour?.occurredAt)),
+      rec('Best day',fmt(r.mostWorkUtcDay?.value||0,0)+' work',ago(r.mostWorkUtcDay?.occurredAt)),
+      rec('Longest run',fmt(r.longestActiveWindowMinutes?.value||0,0)+' min',ago(r.longestActiveWindowMinutes?.occurredAt)),
+      rec('Lifetime distance',fmt(Number(l.observedDistanceMm)/1e6,2)+' km','since '+new Date(l.firstObservedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})),
+      rec('Rounds with work',fmt(Number(rd.activeRateBps)/100,1)+' %','of '+fmt(rd.observedCount,0)+' observed'),
+    ].join('');
+  }catch(err){$('records').innerHTML=`<span class="bad">unavailable: ${esc(err.message)}</span>`}
+}
+function describe(e){
+  const p=e.payload||{}, amt=v=>sqk(v||0,2), km=v=>fmt(Number(v)/1e6,1)+' km', ms=v=>fmt(Number(v)/1000,2)+' m/s';
+  switch(e.type){
+    case 'system.settlement_completed': return `Settlement through round ${fmt(p.settledThroughRound,0)}: +${fmt(p.workAdded,0)} work, blocks ${fmt(p.firstCompletedBlock,0)}–${fmt(p.lastCompletedBlock,0)}`;
+    case 'system.mining_checkpointed': return `Mining checkpoint through round ${fmt(p.throughRound,0)}: ${amt(p.amountBaseUnits)} minted`;
+    case 'account.rewards_claimed': return `${who(p.account)} claimed ${amt(p.amountBaseUnits)}`;
+    case 'account.rewards_staked': return `${who(p.account)} compounded ${amt(p.amountBaseUnits)} into stake`;
+    case 'account.sqk_staked': return `${who(p.account)} staked ${amt(p.amountBaseUnits)}`;
+    case 'account.sqk_unstaked': return `${who(p.account)} unstaked ${amt(p.amountBaseUnits)}`;
+    case 'account.claim_recipient_set': return `${who(p.account)} set a claim recipient`;
+    case 'nft.deposited': return `${who(p.account)} deposited Squeek #${esc(p.tokenId)} to the vault`;
+    case 'nft.withdrawn': return `${who(p.account)} withdrew Squeek #${esc(p.tokenId)} from the vault`;
+    case 'nft.merged': return `${who(p.account)} merged #${esc(p.donorTokenId)} into #${esc(p.survivorTokenId)} → L${esc(p.level)} (${esc(p.custody)})`;
+    case 'measurement.speed_record': return `🏁 Squeektoshi set a speed record: ${ms(p.recordMmPerSecond)} (was ${ms(p.previousRecordMmPerSecond)})`;
+    case 'measurement.speed_milestone': return `⚡ Squeektoshi passed ${ms(p.thresholdSpeedMmPerSecond)}`;
+    case 'measurement.distance_milestone': return `🛣️ Lifetime distance passed ${km(p.thresholdDistanceMm)}`;
+    case 'measurement.daily_distance_milestone': return `📅 ${esc(p.utcDate)}: ${km(p.thresholdDistanceMm)} in one day`;
+    case 'measurement.distance_streak': return `🔥 Distance streak: ${esc(p.streakDays??p.days??'')} days`;
+    default: return esc(e.type);
+  }
+}
+async function loadFeed(){
+  try{
+    const d=await getJ('/events?category=all&limit=14');
+    $('feed').innerHTML=(d.events||[]).map(e=>{const cat=e.type.split('.')[0]; const tx=e.source?.transactionHash; return `<li><time datetime="${esc(e.occurredAt)}" title="${esc(e.occurredAt)}">${ago(e.occurredAt)}</time><span class="ev-${esc(cat)}">${describe(e)}${tx?' '+link('tx/'+tx,'↗'):''}</span></li>`}).join('')||'<li><time>–</time><span>no events yet</span></li>';
+  }catch(err){$('feed').innerHTML=`<li><time>–</time><span class="bad">events unavailable: ${esc(err.message)}</span></li>`}
+}
+
+// ---------- protocol (also discovers the current contract set) ----------
+async function loadProtocol(){
+  try{
+    const [e,core]=await Promise.all([getJ('/economy/state'),getJ('/core')]);
+    const c=e.deployment?.components;
+    if(c&&isAddr(c.staking?.address)&&isAddr(c.collection?.address)&&isAddr(c.token?.address)){
+      const next={nft:c.collection.address,staking:c.staking.address,token:c.token.address,core:c.core?.address||ADDR.core,mining:c.mining?.address||ADDR.mining};
+      if(JSON.stringify(next)!==JSON.stringify(ADDR)){ADDR=next;bind();}
+      DEPLOY_BLOCK=Number(e.chain?.deploymentBlock||core.chain?.deploymentBlock||DEPLOY_BLOCK); RELEASE=e.release?.id||'';
+    }
+    roundCfg={genesis:Number(core.configuration.genesisTimestamp),duration:Number(core.configuration.roundDuration)}; roundTick();
+    const [ts,params,policy,mergesOpen]=await Promise.all([R.staking.totalStaked(),R.staking.powerParameters(),R.staking.exitPolicy(),R.nft.mergesOpen()]);
+    eco=e; totalPower=BigInt(e.staking.totalNftPower)+BigInt(e.staking.totalSqkPower);
+    $('strip').innerHTML=`round <b>#${fmt(e.lifecycle.currentRound,0)}</b> · stage <b>${esc(e.lifecycle.stage)}</b> · height <b>${fmt(core.core.blockHeight,0)}</b> · difficulty <b>${fmt(core.core.workPerThousandBlocks,0)}</b> work/1000 blocks · SQK supply <b>${fmt(E.formatEther(e.supply.liveSupplyBaseUnits),0)}</b> · staked <b>${fmt(E.formatEther(ts),0)}</b> · network power <b>${pow(totalPower)}</b> · Squeeks live <b>${fmt(e.nft.live,0)}</b> · reward stream <b>${fmt(E.formatEther(e.staking.rewards.streamRateBaseUnitsPerSecond),1)}</b> SQK/s · pool <b>${fmt(E.formatEther(e.staking.rewards.remainingBaseUnits),0)}</b> SQK`;
+    const bp=e.nft.basePower.map((p,i)=>`L${i+1} ${fmt(p,0)}`).join(', ');
+    $('proto').innerHTML=`<dt>SQK per power unit</dt><dd>${fmt(E.formatEther(params.sqkPerPower),0)}</dd><dt>Reference power</dt><dd>${pow(params.referencePower)}</dd><dt>Exit fee</dt><dd>${Number(policy.minBps)/100}–${Number(policy.maxBps)/100} % (${policy.windowDays}d window)</dd><dt>Merges</dt><dd class="${mergesOpen?'ok':'bad'}">${mergesOpen?'open':'closed'}</dd><dt>Max level</dt><dd>${esc(e.nft.maximumLevel)}</dd><dt>Base power by level</dt><dd style="white-space:normal;text-align:left">${bp}</dd><dt>Merge cooldown (blocks, by level)</dt><dd style="white-space:normal;text-align:left">${e.nft.cooldownBlocks.map((c,i)=>`L${i+1} ${fmt(c,0)}`).join(', ')}</dd>`;
+    $('contracts').innerHTML=[['Squeek NFT',ADDR.nft],['Staking vault',ADDR.staking],['SQK token',ADDR.token],['Core',ADDR.core],['Mining',ADDR.mining]].map(([k,v])=>`<dt>${k}</dt><dd>${link('address/'+v,'<code>'+short(v)+'</code>')}</dd>`).join('');
+    $('release').textContent=RELEASE?'· release '+RELEASE:'';
+    if(!me) $('planNow').textContent='0';
+  }catch(err){$('strip').innerHTML=`<span class="bad">protocol read failed: ${esc(err.shortMessage||err.message)}</span>`}
+}
+
+// ---------- wallet ----------
 async function connect(){
   if(!window.ethereum){log('No injected wallet found. Install MetaMask, Rabby or similar.','bad');return}
   wallet=new E.BrowserProvider(window.ethereum);
@@ -181,10 +404,9 @@ async function connect(){
   let net=await wallet.getNetwork();
   if(net.chainId!==CHAIN){
     try{await wallet.send('wallet_switchEthereumChain',[{chainId:CHAIN_HEX}])}
-    catch(e){log('Switch your wallet to Sepolia (chain 11155111).','bad');$('net').className='pill bad';return}
+    catch(e){log('Switch your wallet to Sepolia (chain 11155111).','bad');return}
     wallet=new E.BrowserProvider(window.ethereum); net=await wallet.getNetwork();
   }
-  $('net').className='pill ok';
   signer=await wallet.getSigner(); me=await signer.getAddress();
   W.token=new E.Contract(ADDR.token,ABI.token,signer); W.staking=new E.Contract(ADDR.staking,ABI.staking,signer); W.nft=new E.Contract(ADDR.nft,ABI.nft,signer);
   $('connect').textContent=short(me);
@@ -204,22 +426,20 @@ async function refresh(){
     $('share').textContent=totalPower>0n?fmt(Number(total*1000000n/totalPower)/10000,4)+' %':'–';
     $('principal').textContent=sqk(st.principal); $('fresh').textContent=st.freshPrincipal>0n?`${sqk(st.freshPrincipal)} until round ${st.freshUntilRound}`:'none';
     $('claimable').textContent=sqk(cl,4); $('sqkBal').textContent=sqk(bal); $('ethBal').textContent=fmt(E.formatEther(eth),4)+' ETH';
-    $('posNote').textContent='Reads straight from the staking vault and token on Sepolia.';
+    $('posNote').textContent='Read straight from the staking vault and token on Sepolia.';
     $('planNow').textContent=pow(total);
     await loadSqueeks();
-  }catch(err){log('refresh failed: '+(err.shortMessage||err.message),'bad')}
+  }catch(err){log('refresh failed: '+esc(err.shortMessage||err.message),'bad')}
 }
 
 // Public Sepolia RPCs prune old logs, so candidate token ids come from the Blockscout log index; ownership is then confirmed on-chain.
-const BLOCKSCOUT='https://eth-sepolia.blockscout.com/api';
 const TOPIC={transfer:E.id('Transfer(address,address,uint256)'),deposited:E.id('Deposited(address,address,uint256,uint8,uint64,uint256)')};
 const pad=a=>'0x'+a.slice(2).toLowerCase().padStart(64,'0');
 async function indexedLogs(address,topic0,n,topicN){
   const q=`${BLOCKSCOUT}?module=logs&action=getLogs&fromBlock=${DEPLOY_BLOCK}&toBlock=latest&address=${address}&topic0=${topic0}&topic${n}=${topicN}&topic0_${n}_opr=and`;
-  const d=await fetch(q).then(r=>r.json());
+  const d=await fetch(q,{signal:AbortSignal.timeout(20000)}).then(r=>r.json());
   return Array.isArray(d.result)?d.result:[];
 }
-
 async function loadSqueeks(){
   $('nftNote').textContent='Scanning transfers and vault deposits…';
   try{
@@ -231,7 +451,7 @@ async function loadSqueeks(){
       let owner; try{owner=await R.nft.ownerOf(id)}catch{continue}
       let where=null;
       if(owner.toLowerCase()===me.toLowerCase()) where='wallet';
-      else if(owner.toLowerCase()===ADDR.staking){ const d=await R.staking.depositor(ADDR.nft,id); if(d.toLowerCase()===me.toLowerCase()) where='vault'; }
+      else if(owner.toLowerCase()===ADDR.staking.toLowerCase()){ const d=await R.staking.depositor(ADDR.nft,id); if(d.toLowerCase()===me.toLowerCase()) where='vault'; }
       if(!where) continue;
       const [lvl,nxt]=await Promise.all([R.nft.level(id),R.nft.nextMergeHeight(id)]);
       rows.push({id,where,lvl:Number(lvl),next:Number(nxt),base:eco?Number(eco.nft.basePower[Number(lvl)-1]):0});
@@ -255,7 +475,7 @@ async function tx(label,fn){
     const t=await fn(); log(label+' sent '+link('tx/'+t.hash,short(t.hash)));
     const rc=await t.wait(); log(label+(rc.status===1?' confirmed':' FAILED')+' in block '+rc.blockNumber,rc.status===1?'ok':'bad');
     await refresh();
-  }catch(err){log(label+' failed: '+(err.shortMessage||err.reason||err.message),'bad')}
+  }catch(err){log(label+' failed: '+esc(err.shortMessage||err.reason||err.message),'bad')}
 }
 const parseIds=s=>s.split(',').map(x=>x.trim()).filter(Boolean).map(x=>BigInt(x));
 
@@ -304,10 +524,16 @@ $('planBtn').onclick=async()=>{
     const gain=after-now; let msg='–';
     if(gain>0n&&eco){const bp=eco.nft.basePower.map(Number); const g=Number(E.formatEther(gain)); const hit=bp.findIndex((p,i)=>i>0&&p-bp[i-1]>=g); msg=hit>0?`merging two L${hit} Squeeks gives +${fmt(bp[hit]-bp[hit-1],0)}`:'bigger than any single merge';}
     $('planMerge').textContent=msg;
-  }catch(err){log('quote failed: '+(err.shortMessage||err.message),'bad')}
+  }catch(err){log('quote failed: '+esc(err.shortMessage||err.message),'bad')}
 };
 if(window.ethereum){window.ethereum.on?.('accountsChanged',()=>location.reload());window.ethereum.on?.('chainChanged',()=>location.reload())}
-loadProtocol(); setInterval(loadProtocol,60000);
+
+// ---------- schedule ----------
+loadProtocol().then(()=>{loadDay();loadRecords();loadFeed();});
+liveTick(); setInterval(liveTick,5000);
+setInterval(roundTick,1000);
+setInterval(loadProtocol,60000); setInterval(loadDay,60000); setInterval(loadFeed,30000); setInterval(loadRecords,300000);
+window.addEventListener('resize',drawSpark);
 </script>
 </body>
 </html>

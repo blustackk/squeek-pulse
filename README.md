@@ -1,26 +1,57 @@
 # Squeek Pulse
 
-Non-custodial holder tool for [Squeekchain](https://squeekchain.com) on Sepolia.
+Live companion and non-custodial holder tool for [Squeekchain](https://squeekchain.com), the hamster-powered chain, on Sepolia.
 
-https://squeek.blu-stack.com
+**https://squeek.blu-stack.com**
 
-Connect a wallet and the page reads your position straight from the Squeekchain contracts:
+![Squeek Pulse: Squeektoshi live](docs/hero.png)
 
-- **Your position**: NFT power and SQK power (`accountPower`), share of network power, staked and fresh principal (`stakeOf`), claimable rewards, SQK balance.
-- **Your Squeeks**: every Squeek in your wallet or deposited in the staking vault, found from `Transfer` and `Deposited` logs (via the Blockscout log index, since public Sepolia RPCs prune old logs) and confirmed on-chain with `ownerOf` / `depositor`. Each row shows level, base power and merge cooldown.
-- **Power planner**: what your power and share become if you add SQK or Squeeks. Quotes come from `quotePower` and `basePower` on the live staking contract, not a copied formula.
-- **Actions**, each a transaction you sign yourself: approve and `stake`, `claim`, `claimAndStake`, `unstake` with an on-chain `quoteUnstake` fee preview and a 5 % fee ceiling, `deposit` / `withdraw` Squeeks to and from the vault, and `merge` (collection) or `mergeDeposited` (vault) with level and cooldown checks before you sign.
-- **Chain pulse**: current round, block height, difficulty, supply, total staked and network power from the public API.
+## What it shows
 
-One static page, no build step, no backend, no keys. Uses ethers v6 from cdnjs and the public Sepolia RPC at publicnode for reads; writes go through your injected wallet.
+### Squeektoshi live
+The wheel at the top turns at the speed the hardware counter reports, and sleeps when Squeektoshi rests. Polled every 5 seconds from the public API:
 
-Contracts (Sepolia): Squeek NFT `0xcb98349c134ab983da5bfd80527dfe2552bdb70f`, staking vault `0x4b67b739dfd832f4eac67a7aa3bc244fb74cea4f`, SQK `0x5501e1fa81be1c3f49225fa7668da0245d07db60`.
+- wheel rpm, speed and distance from the signed hardware counter
+- work units in the open round, blocks settled vs. blocks projected
+- round number and a countdown to the next round (10-minute rounds, from the core contract's genesis timestamp)
+- time since the last settlement, linked to the Sepolia transaction
+- a rolling 5-minute rpm sparkline
+
+### Chain pulse, last 24 hours, records
+Round and stage, block height, difficulty, SQK supply, total staked, network power, live Squeeks and the reward stream; a 24-hour settlement summary with the last SQK mint; and 7-day records (peak speed, peak rpm, best half hour, best day, longest run, lifetime distance).
+
+### Activity on chain
+A live feed of protocol events: stakes, claims, compounding, vault deposits and withdrawals, merges, settlements, mining checkpoints and Squeektoshi's own milestones (speed records, distance milestones). Each entry links to the transaction.
+
+### Your position and your Squeeks
+Connect a wallet (MetaMask, Rabby, any injected EIP-1193 wallet) and the page reads your position straight from the contracts:
+
+- NFT power and SQK power (`accountPower`), share of network power, staked and fresh principal (`stakeOf`), claimable rewards, balances
+- every Squeek you hold in wallet or in the staking vault, found from `Transfer` and `Deposited` logs (via the Blockscout log index, because public Sepolia RPCs prune old logs) and confirmed on-chain with `ownerOf` / `depositor`; each row shows level, base power and merge cooldown
+- **Power planner**: what adding SQK or Squeeks does to your power, quoted with `quotePower` and `basePower` on the live staking contract rather than a copied formula
+
+### Actions
+Each one is a transaction you sign in your own wallet: approve and `stake`, `claim`, `claimAndStake`, `unstake` with an on-chain `quoteUnstake` fee preview and a 5 % fee ceiling, `deposit` / `withdraw` Squeeks to and from the vault, and `merge` (collection) or `mergeDeposited` (vault) with level, custody and cooldown checks before you sign.
+
+![Full page](docs/full.png)
+
+## How it works
+
+One static HTML file, no build step, no backend, no keys, no analytics.
+
+- Live data: `api.squeekchain.com/v1` (`/status`, `/economy/state`, `/core`, `/settlements`, `/measurement/stats`, `/events`).
+- Contract addresses are **not hardcoded**: the page reads the current release from `/economy/state` (`deployment.components`) and binds to those contracts, so it follows redeployments. Release `core-sepolia-20261103` is only the fallback if the API is down.
+- Reads go through the public Sepolia RPC at publicnode with ethers v6 (cdnjs). Writes go through your injected wallet.
+- Everything rendered from the API is escaped; addresses are validated before they are linked.
+- Respects `prefers-reduced-motion`, keyboard focus is visible, works at phone width.
 
 ## Run locally
 
 ```
 python3 -m http.server 8000
 ```
+
+Then open http://localhost:8000.
 
 ## Independent community tool
 
